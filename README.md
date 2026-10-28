@@ -28,29 +28,55 @@ distant player isn't possible. Instead, while watching, the mod:
 > the wearer, with the wearer's vision cone. The **Forward offset** option shifts
 > the view a few tiles ahead of the wearer, like a lens pointing forward.
 
-## Install
+## Install (Build 42 dedicated server)
 
-Put the `BodyCam` folder on **the server and on both clients**:
+A dedicated server, Indifferent Gorilla included, downloads mods from the Steam
+Workshop. Players' games then download them automatically when they join. So the
+easiest route is to upload this mod to the Workshop as an **Unlisted** item. It
+then won't show in Workshop search, but the server and your players can still
+download it.
 
-| Where | Path |
-|---|---|
-| Local mods (testing) | `%UserProfile%\Zomboid\mods\BodyCam` (copy `Contents/mods/BodyCam`) |
-| Workshop upload | Use this repo's `Contents/` folder as the Workshop item content |
+### 1. Upload to the Workshop (once, from your streaming PC)
 
-On a dedicated server, add the mod to the server `.ini`:
+1. Copy this whole repository folder (the one containing `preview.png` and
+   `Contents/`) to `%UserProfile%\Zomboid\Workshop\BodyCam\`.
+2. Start Project Zomboid → **Workshop** → **Create and update items** → pick
+   `BodyCam` → upload.
+3. On the Steam page that opens, set visibility to **Unlisted** (not *Private*,
+   or the server can't download it). Note the number at the end of the page's URL.
+   That's the **Workshop ID**.
 
-```
-Mods=BodyCam
-WorkshopItems=<your workshop id, if uploaded>
-```
+### 2. Enable it on the server (Indifferent Gorilla panel)
 
-The folder works for **Build 41** (`media/`) and **Build 42** (`42/` + `common/`).
-After editing Lua in `media/`, run `tools/sync_b42.sh` to refresh the B42 copy.
+1. Stop the server.
+2. Add the mod using the panel's mod manager, or edit the server `.ini`
+   (usually `servertest.ini`):
+   - add the Workshop ID to `WorkshopItems=`
+   - add `BodyCam` to `Mods=` (match the format the existing entries use; Build 42
+     entries may start with a backslash, e.g. `\BodyCam`)
+3. Start the server. Both your streaming account and the admin laptop download
+   the mod automatically when they connect.
+
+### Testing locally first (optional)
+
+Copy `Contents/mods/BodyCam` to `%UserProfile%\Zomboid\mods\BodyCam`, enable it
+in **Mods**, and start a single-player game. The window opens with **Insert**
+(single player has no other players to watch, but you can check the UI loads).
+
+### Folder layout
+
+Build 42 only loads mods that have a `42/` folder (and a `common/` folder, which can
+stay empty). All code lives in `Contents/mods/BodyCam/42/`.
 
 ## Usage (on the admin laptop)
 
-1. Log in with an account that has `admin` or `moderator` access level
-   (`/setaccesslevel "Name" admin` from the server console).
+1. Log in with an account that has the **admin**, **moderator**, **overseer** or **gm**
+   role (`/setaccesslevel "Name" admin` from the server console or panel). If you
+   use a custom role name, add the admin account's username to the
+   **Body Cam → Allowed usernames** sandbox option (`BodyCam.AllowedUsers`,
+   comma-separated) in the server's `_SandboxVars.lua` or the panel. The server
+   checks this for every request, so the password-protected public server stays
+   safe: normal players can't locate anyone.
 2. **Leave any vehicle** and press **Insert** to open the Body Cam window.
 3. Select your streamer character and click **Watch** (or double-click it).
 4. **Ctrl+Insert** stops watching from anywhere (or use the Stop button).
@@ -68,7 +94,8 @@ Options (saved to `Zomboid/Lua/BodyCam_settings.txt`):
 | Forward offset | Moves the view center N tiles in front of the wearer |
 
 The unit label shown in the overlay (default `UNIT 01`) can be changed in the
-settings file (`unitLabel=...`).
+settings file (`unitLabel=...`). Your OBS VHS shader goes on top of the in-game
+REC/timestamp overlay, so they combine naturally.
 
 ### OBS / streaming tips
 
@@ -83,8 +110,10 @@ settings file (`unitLabel=...`).
 - In multiplayer, the client nearest to zombies may be put in charge of
   simulating them. With the admin laptop sitting on your character, a bad
   connection there could make nearby zombies laggy. Use a wired or stable connection.
-- Servers with strict anti-cheat settings may flag the admin's teleports and
-  movement. Admin and moderator accounts are normally exempt.
+- Build 42 multiplayer has stronger anti-cheat. Admin roles are normally exempt,
+  but if the admin laptop gets kicked or rubber-bands while following, check the
+  server log for anti-cheat entries and loosen that specific check (or tell me
+  what it says).
 - If you still see a ghostly copy of the admin character on top of yours (some
   builds ignore the hide call), take the admin character's clothes off so it
   stays mostly unnoticeable.
@@ -92,13 +121,16 @@ settings file (`unitLabel=...`).
 ## Files
 
 ```
+preview.png                                       Workshop thumbnail
 Contents/mods/BodyCam/
-  mod.info
-  media/lua/shared/BodyCam/BodyCam_Shared.lua   access checks, constants
-  media/lua/server/BodyCam/BodyCam_Server.lua   answers "list players" / "where is X" (admins only)
-  media/lua/client/BodyCam/BodyCam_Client.lua   follow logic, flags, settings
-  media/lua/client/BodyCam/BodyCam_Overlay.lua  REC / timestamp overlay
-  media/lua/client/BodyCam/BodyCam_UI.lua       control window + hotkeys
-  42/                                           Build 42 copy (generated)
-  common/                                       required by Build 42
+  common/                                         required by Build 42 (empty)
+  42/
+    mod.info, poster.png, icon.png
+    media/sandbox-options.txt                     BodyCam.AllowedUsers option
+    media/lua/shared/BodyCam/BodyCam_Shared.lua   role checks, constants
+    media/lua/shared/Translate/EN/Sandbox_EN.txt  sandbox option labels
+    media/lua/server/BodyCam/BodyCam_Server.lua   answers "list players" / "where is X" (admins only)
+    media/lua/client/BodyCam/BodyCam_Client.lua   follow logic, flags, settings
+    media/lua/client/BodyCam/BodyCam_Overlay.lua  REC / timestamp overlay
+    media/lua/client/BodyCam/BodyCam_UI.lua       control window + hotkeys
 ```

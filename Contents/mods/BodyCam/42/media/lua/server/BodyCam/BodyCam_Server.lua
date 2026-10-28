@@ -66,7 +66,10 @@ end
 local function onClientCommand(module, command, player, args)
     if module ~= BodyCam.MODULE then return end
     if not BodyCam.isAllowed(player) then
-        BodyCam.log("Rejected '" .. tostring(command) .. "' from non-admin " .. tostring(player and player:getUsername()))
+        BodyCam.log("Rejected '" .. tostring(command) .. "' from " .. tostring(player and player:getUsername()) .. " (role: " .. tostring(player and BodyCam.getRoleName(player)) .. ")")
+        if player then
+            sendServerCommand(player, BodyCam.MODULE, "denied", { role = tostring(BodyCam.getRoleName(player)) })
+        end
         return
     end
     local handler = Commands[command]

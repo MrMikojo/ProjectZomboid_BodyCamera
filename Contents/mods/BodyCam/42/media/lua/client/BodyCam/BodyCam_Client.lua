@@ -77,17 +77,21 @@ end
 -- Helpers
 ----------------------------------------------------------------------------
 
+local say
+
 local function now()
     return getTimestampMs()
 end
 
-local function say(msg)
+function BodyCam.say(msg)
     local player = getPlayer()
     if player then
-        player:setHaloNote(msg, 255, 200, 80, 300)
+        pcall(player.setHaloNote, player, msg, 255, 200, 80, 300)
     end
     BodyCam.log(msg)
 end
+
+say = BodyCam.say
 
 local function tryCall(obj, method, ...)
     if obj and obj[method] then
@@ -362,6 +366,12 @@ local function onServerCommand(module, command, args)
             s.serverPos = { x = args.x, y = args.y, z = args.z }
         else
             s.serverPos = nil
+        end
+    elseif command == "denied" then
+        local wasActive = BodyCam.state.active
+        BodyCam.stop()
+        if wasActive or (BodyCam.UI and BodyCam.UI.instance) then
+            say("Body Cam: server refused (role '" .. tostring(args.role) .. "'). Add your username to the BodyCam.AllowedUsers sandbox option.")
         end
     elseif command == "list" then
         if BodyCam.UI and BodyCam.UI.onPlayerList then

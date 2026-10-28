@@ -1,0 +1,5 @@
+Sandbox_EN = {
+    Sandbox_BodyCam = "Body Cam",
+    Sandbox_BodyCam_AllowedUsers = "Allowed usernames",
+    Sandbox_BodyCam_AllowedUsers_tooltip = "Comma-separated usernames allowed to use Body Cam, in addition to admin/moderator/overseer/gm roles.",
+}
