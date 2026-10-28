@@ -30,7 +30,7 @@ distant player isn't possible. Instead, while watching, the mod:
 
 ## Install (Build 42 dedicated server)
 
-A dedicated server, Indifferent Gorilla included, downloads mods from the Steam
+A dedicated server, Indifferent Broccoli included, downloads mods from the Steam
 Workshop. Players' games then download them automatically when they join. So the
 easiest route is to upload this mod to the Workshop as an **Unlisted** item. It
 then won't show in Workshop search, but the server and your players can still
@@ -46,7 +46,7 @@ download it.
    or the server can't download it). Note the number at the end of the page's URL.
    That's the **Workshop ID**.
 
-### 2. Enable it on the server (Indifferent Gorilla panel)
+### 2. Enable it on the server (Indifferent Broccoli panel)
 
 1. Stop the server.
 2. Add the mod using the panel's mod manager, or edit the server `.ini`
