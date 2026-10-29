@@ -289,10 +289,12 @@ end
 
 local samples = {}          -- { t, x, y, z, angle, dir }, oldest first
 local lastApply = 0
+local lastApplied = nil     -- last sample the view was moved to
 local JUMP_DISTANCE = 5     -- tiles between samples that count as a teleport, not movement
 
 function BodyCam.clearSamples()
     samples = {}
+    lastApplied = nil
 end
 
 local function recordSample(target)
@@ -344,6 +346,14 @@ local function sampleAt(t)
     return samples[n]
 end
 
+-- Facing comes only from the wearer's body, never from the admin's own mouse.
+local function applyFacing(player, sample)
+    if not BodyCam.settings.matchFacing or not sample.angle then return end
+    if sample.dir then tryCall(player, "setDir", sample.dir) end
+    tryCall(player, "setDirectionAngle", sample.angle)
+    tryCall(player, "setForwardDirection", math.cos(math.rad(sample.angle)), math.sin(math.rad(sample.angle)))
+end
+
 local function pinTo(player, sample)
     local fx, fy = 0, 0
     if sample.angle then
@@ -360,17 +370,18 @@ local function pinTo(player, sample)
         tryCall(player, "setLx", x); tryCall(player, "setLy", y); tryCall(player, "setLz", z)
     end
 
-    if BodyCam.settings.matchFacing and sample.angle then
-        if sample.dir then tryCall(player, "setDir", sample.dir) end
-        tryCall(player, "setDirectionAngle", sample.angle)
-        tryCall(player, "setForwardDirection", fx, fy)
-    end
+    applyFacing(player, sample)
+    lastApplied = sample
 end
 
 -- Move the view at most updateFps times a second, to where the target was delayMs ago.
 local function applyDelayed(player)
     local fps = math.max(1, BodyCam.settings.updateFps or 24)
-    if now() - lastApply < 1000 / fps then return end
+    if now() - lastApply < 1000 / fps then
+        -- Between updates, hold the last facing so local mouse input can't turn the view.
+        if lastApplied then applyFacing(player, lastApplied) end
+        return
+    end
     lastApply = now()
     local sample = sampleAt(now() - (BodyCam.settings.delayMs or 0))
     if sample then pinTo(player, sample) end

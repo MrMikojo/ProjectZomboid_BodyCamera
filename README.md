@@ -119,7 +119,8 @@ REC/timestamp overlay, so they combine naturally.
 
 - Viewpoint's free camera is **Insert + O**, which also opens the Body Cam window.
   Rebind one of them (Body Cam: **Options → Mods → Body Cam**).
-- Body Cam turns the laptop's character to match the wearer's body facing every
+- The view turns only with the wearer's **body** facing (not their mouse or camera),
+  and the laptop's own mouse can't turn it. Body Cam turns the laptop's character every
   update. Whether Viewpoint's first-person view turns with it depends on whether
   Viewpoint follows the character's facing or only the mouse. If the view doesn't
   rotate, release the mouse (middle mouse button) on the laptop.
