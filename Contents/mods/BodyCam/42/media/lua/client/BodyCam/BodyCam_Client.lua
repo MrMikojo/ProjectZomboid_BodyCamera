@@ -3,8 +3,10 @@
 -- Project Zomboid's camera always follows the local player and the client only
 -- loads/streams the world around that player. So instead of moving the camera,
 -- the (invisible, ghosted, no-clipping) admin character is pinned onto the
--- target's position and facing. The camera, line of sight and vision cone then
--- match what the target sees, like a chest-mounted camera.
+-- target's position, giving a spectator-style overhead camera held close above
+-- the target. With "see everyone" on, zombies and players behind the target
+-- stay visible, so viewers can see what the target can't. Optionally the view
+-- can also turn with the target's body (the original chest-cam behaviour).
 --
 -- The target is sampled every tick into a short buffer, and the view is moved
 -- `updateFps` times a second to where the target was `delayMs` ago. The delay
@@ -14,10 +16,11 @@ require "BodyCam/BodyCam_Shared"
 
 BodyCam.settings = {
     overlay = true,         -- REC / timestamp overlay
-    matchFacing = true,     -- copy target's facing (vision cone)
+    seeAll = true,          -- admin "see/hear everyone": show what's behind the target
+    turnWithBody = false,   -- copy target's body facing (chest-cam style vision cone)
     hideSelf = true,        -- try to hide the admin's own model
     autoZoom = true,        -- zoom in when starting
-    zoomSteps = 3,          -- how many zoom-in steps to apply
+    zoomSteps = 5,          -- how many zoom-in steps to apply (game caps at its closest level)
     returnOnStop = true,    -- teleport back to where you started
     autoResume = false,     -- resume watching the last target after login
     forwardOffset = 0,      -- tiles ahead of the target to center the view
@@ -135,11 +138,28 @@ local function applySpectatorFlags(player)
         ghost = tryCall(player, "isGhostMode"),
         god = tryCall(player, "isGodMod"),
         noclip = tryCall(player, "isNoClip"),
+        seeAll = tryCall(player, "isCanSeeAll"),
+        hearAll = tryCall(player, "isCanHearAll"),
     }
     tryCall(player, "setInvisible", true)
     tryCall(player, "setGhostMode", true)
     tryCall(player, "setGodMod", true)
     tryCall(player, "setNoClip", true)
+    if BodyCam.settings.seeAll then
+        tryCall(player, "setCanSeeAll", true)
+        tryCall(player, "setCanHearAll", true)
+    end
+    syncAdminFlags(player)
+end
+
+-- Called when the "see everyone" option is toggled while watching.
+function BodyCam.applySeeAll()
+    local player = getPlayer()
+    local f = BodyCam.state.savedFlags
+    if not player or not BodyCam.state.active or not f then return end
+    local on = BodyCam.settings.seeAll
+    tryCall(player, "setCanSeeAll", on or f.seeAll == true)
+    tryCall(player, "setCanHearAll", on or f.hearAll == true)
     syncAdminFlags(player)
 end
 
@@ -150,6 +170,8 @@ local function restoreSpectatorFlags(player)
     if f.ghost ~= nil then tryCall(player, "setGhostMode", f.ghost) end
     if f.god ~= nil then tryCall(player, "setGodMod", f.god) end
     if f.noclip ~= nil then tryCall(player, "setNoClip", f.noclip) end
+    if f.seeAll ~= nil then tryCall(player, "setCanSeeAll", f.seeAll) end
+    if f.hearAll ~= nil then tryCall(player, "setCanHearAll", f.hearAll) end
     syncAdminFlags(player)
     BodyCam.state.savedFlags = nil
 end
@@ -346,9 +368,9 @@ local function sampleAt(t)
     return samples[n]
 end
 
--- Facing comes only from the wearer's body, never from the admin's own mouse.
+-- Optional: facing comes only from the wearer's body, never from the admin's own mouse.
 local function applyFacing(player, sample)
-    if not BodyCam.settings.matchFacing or not sample.angle then return end
+    if not BodyCam.settings.turnWithBody or not sample.angle then return end
     if sample.dir then tryCall(player, "setDir", sample.dir) end
     tryCall(player, "setDirectionAngle", sample.angle)
     tryCall(player, "setForwardDirection", math.cos(math.rad(sample.angle)), math.sin(math.rad(sample.angle)))

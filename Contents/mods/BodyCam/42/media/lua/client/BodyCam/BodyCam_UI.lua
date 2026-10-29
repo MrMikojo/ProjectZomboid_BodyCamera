@@ -44,7 +44,8 @@ local PAD = 10
 
 local OPTIONS = {
     { key = "overlay",      label = "Show REC / timestamp overlay" },
-    { key = "matchFacing",  label = "Match target's facing (vision cone)" },
+    { key = "seeAll",       label = "See everyone (show what's behind them)" },
+    { key = "turnWithBody", label = "Turn with their body (chest-cam style)" },
     { key = "hideSelf",     label = "Hide my own character model" },
     { key = "autoZoom",     label = "Zoom in when starting" },
     { key = "returnOnStop", label = "Teleport back when stopping" },
@@ -52,7 +53,7 @@ local OPTIONS = {
 }
 
 function BodyCamWindow:new(x, y)
-    local o = ISPanel.new(self, x, y, 340, 530)
+    local o = ISPanel.new(self, x, y, 340, 550)
     o.moveWithMouse = true
     o.backgroundColor = { r = 0, g = 0, b = 0, a = 0.85 }
     o.borderColor = { r = 0.6, g = 0.1, b = 0.1, a = 1 }
@@ -190,6 +191,7 @@ function BodyCamWindow:onTick(index, selected)
     if not opt then return end
     BodyCam.settings[opt.key] = selected
     BodyCam.saveSettings()
+    if opt.key == "seeAll" then BodyCam.applySeeAll() end
     if opt.key == "hideSelf" and not selected and getPlayer() then
         pcall(getPlayer().setAlphaAndTarget, getPlayer(), 0, 1)
     end

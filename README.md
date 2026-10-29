@@ -1,8 +1,10 @@
 # Project Zomboid – Body Cam (Admin Spectator)
 
 A multiplayer mod for streamers. An **admin or moderator** on a second PC or laptop locks
-their view onto any online player, like a chest-mounted body camera. Capture that
-laptop's game window in OBS and you have a second "body cam" feed.
+their view onto any online player as a **spectator camera held close above them**.
+It shows everything around the player, including what's behind them that they
+can't see themselves. Capture that laptop's game window in OBS and you have a
+second camera feed.
 
 ## How it works (and why)
 
@@ -12,21 +14,25 @@ distant player isn't possible. Instead, while watching, the mod:
 
 1. Makes the admin character **invisible, ghosted (zombies ignore you), god mode
    and no-clip**, and saves the previous state so it can be restored afterwards.
-2. **Pins the admin character onto the target** every tick, copying the target's
-   position, floor and **facing direction**. Because line of sight and the
-   darkened vision cone come from the admin's position and facing, the view
-   matches what the target can see. That is the "body cam" effect.
-3. Asks the **server** where the target is every 2 seconds. If the target is far
+2. Turns on the admin powers **see everyone / hear everyone**, so zombies and
+   players behind the wearer stay visible on the feed.
+3. **Pins the admin character onto the wearer**, 24 times a second, about 250 ms
+   behind them. The camera then hangs above the wearer and zoomed in. It doesn't
+   rotate: north stays north, like a spectator camera.
+4. Asks the **server** where the wearer is every 2 seconds. If the wearer is far
    away or out of sync, it teleports you there with `/teleportto` and then resumes
    tight tracking. This also handles vehicles, fast travel and respawns.
-4. Optionally zooms in and draws a small **REC ● / unit label / in-game timestamp**
-   overlay. If the target disconnects or dies, it shows **SIGNAL LOST** and keeps
-   retrying.
+5. Draws a small **REC ● / unit label / in-game timestamp** overlay (optional). If
+   the wearer disconnects or dies, it shows **SIGNAL LOST** and keeps retrying.
 
-> **Limitation:** Project Zomboid is isometric, so the camera can't be rotated or
-> turned into true first person. "Chest view" here means centered and zoomed in on
-> the wearer, with the wearer's vision cone. The **Forward offset** option shifts
-> the view a few tiles ahead of the wearer, like a lens pointing forward.
+> **About the angle:** the vanilla camera is fixed at the game's isometric angle.
+> It can zoom right in on the wearer, but it can't point straight down from "3 feet
+> above the head". For that you'd need a 3D camera mod with a top-down mode. Body
+> Cam keeps the laptop's character on the wearer, so such a camera would follow
+> them too.
+>
+> **Prefer the old chest-cam?** Tick **Turn with their body**. The view then copies
+> the wearer's body facing, vision cone included.
 
 ## Install (Build 42 dedicated server)
 
@@ -102,33 +108,31 @@ Options (saved to `Zomboid/Lua/BodyCam_settings.txt`):
 | Option | What it does |
 |---|---|
 | Show REC / timestamp overlay | Blinking REC dot, unit label, in-game date/time |
-| Match target's facing | Copy facing so the vision cone matches the wearer |
+| See everyone | Admin see/hear-everyone powers while watching, so whatever's behind the wearer shows on the feed (default on) |
+| Turn with their body | Chest-cam style: copy the wearer's body facing and vision cone (default off) |
 | Hide my own character model | Hides the admin's semi-transparent model, which otherwise overlaps the wearer |
-| Zoom in when starting | Applies N zoom-in steps (adjustable), undone on stop |
+| Zoom in when starting | Applies N zoom-in steps (default 5, adjustable), undone on stop. The game stops at its closest zoom level |
 | Teleport back when stopping | Returns you to where you started |
 | Resume last target after login | Rejoins the feed automatically after a reconnect (handy for long streams) |
-| Forward offset | Moves the view center N tiles in front of the wearer |
-| Camera update rate | How many times a second the view moves (default **24 fps**, choices 12–60). Gives the choppier body-cam cadence and less work per second |
+| Forward offset | Moves the view center N tiles in front of the wearer (0 keeps them centered) |
+| Camera update rate | How many times a second the view moves (default **24 fps**, choices 12–60). Gives a choppier camera cadence and less work per second |
 | Camera delay | How far behind the wearer the view runs (default 250 ms, 0–1000). Smooths network jitter; raise it if movement stutters |
 
 The unit label shown in the overlay (default `UNIT 01`) can be changed in the
 settings file (`unitLabel=...`). Your OBS VHS shader goes on top of the in-game
 REC/timestamp overlay, so they combine naturally.
 
-### With Project Viewpoint (first person)
+### With Project Viewpoint
 
+- Use the **normal (non-first-person) view** on the admin laptop for this camera
+  (Viewpoint: **O** toggles first person).
 - Viewpoint's free camera is **Insert + O**, which also opens the Body Cam window.
   Rebind one of them (Body Cam: **Options → Mods → Body Cam**).
-- The view turns only with the wearer's **body** facing (not their mouse or camera),
-  and the laptop's own mouse can't turn it. Body Cam turns the laptop's character every
-  update. Whether Viewpoint's first-person view turns with it depends on whether
-  Viewpoint follows the character's facing or only the mouse. If the view doesn't
-  rotate, release the mouse (middle mouse button) on the laptop.
 
 ### OBS / streaming tips
 
-- In the game's **Options → Display**, enable the closer zoom levels (e.g. 50%)
-  so "Zoom in" can get close.
+- In the game's **Options → Display**, enable the closest zoom levels so the
+  camera can sit tight above the wearer.
 - Hide the vanilla HUD on the admin laptop, or crop it out in OBS. The overlay is
   drawn in the top corners.
 - Turn the overlay off if you'd rather build the body-cam frame in OBS.
@@ -145,6 +149,9 @@ REC/timestamp overlay, so they combine naturally.
 - If you still see a ghostly copy of the admin character on top of yours (some
   builds ignore the hide call), take the admin character's clothes off so it
   stays mostly unnoticeable.
+- The darkening of tiles outside a character's view comes from the admin
+  character's own vision cone. "See everyone" keeps zombies and players visible
+  there, but the ground may still be shaded on one side. Tell me how it looks.
 
 ## Files
 
