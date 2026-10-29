@@ -79,3 +79,5 @@ local function onClientCommand(module, command, player, args)
 end
 
 Events.OnClientCommand.Add(onClientCommand)
+
+BodyCam.log("Server module loaded")

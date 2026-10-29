@@ -1,5 +1,6 @@
 -- Body Cam: admin control window.
--- Open/close with the hotkey (default: Insert). Ctrl+Insert stops watching.
+-- Open/close with the hotkey (default: Insert, rebindable in Options > Mods),
+-- or right-click the ground > "Body Cam...". Ctrl+hotkey stops watching.
 
 require "ISUI/ISPanel"
 require "ISUI/ISButton"
@@ -9,6 +10,32 @@ require "BodyCam/BodyCam_Client"
 
 BodyCam.UI = BodyCam.UI or {}
 BodyCam.UI.TOGGLE_KEY = Keyboard.KEY_INSERT
+BodyCam.UI.STOP_KEY = 0
+
+-- Build 42 native mod options: lets the hotkeys be rebound in Options > Mods.
+local modOptions = nil
+if PZAPI and PZAPI.ModOptions then
+    local ok, res = pcall(function()
+        local o = PZAPI.ModOptions:create("BodyCam", "Body Cam")
+        o:addKeyBind("toggleWindow", "Open / close Body Cam window", Keyboard.KEY_INSERT,
+            "Hold Ctrl while pressing it to stop watching.")
+        o:addKeyBind("stopWatching", "Stop watching", 0)
+        return o
+    end)
+    if ok then
+        modOptions = res
+    else
+        BodyCam.log("Mod options unavailable: " .. tostring(res))
+    end
+end
+
+local function boundKey(id, default)
+    if modOptions then
+        local ok, value = pcall(function() return modOptions:getOption(id):getValue() end)
+        if ok and type(value) == "number" then return value end
+    end
+    return default
+end
 
 BodyCamWindow = ISPanel:derive("BodyCamWindow")
 
@@ -177,7 +204,13 @@ function BodyCam.UI.toggle()
         return
     end
     local player = getPlayer()
-    if not player or not BodyCam.isAllowed(player) then return end
+    if not player then return end
+    if not BodyCam.isAllowed(player) then
+        local role = tostring(BodyCam.getRoleName(player))
+        BodyCam.log("Window refused for " .. tostring(player:getUsername()) .. ", role: " .. role)
+        BodyCam.say("Body Cam: no permission (role: " .. role .. "). Needs admin/moderator, or add your username to BodyCam.AllowedUsers.")
+        return
+    end
     local w = BodyCamWindow:new(100, 100)
     w:initialise()
     w:addToUIManager()
@@ -193,7 +226,13 @@ function BodyCam.UI.onPlayerList(players)
 end
 
 local function onKeyPressed(key)
-    if key ~= BodyCam.UI.TOGGLE_KEY then return end
+    if not key or key == 0 then return end
+    if key == boundKey("stopWatching", BodyCam.UI.STOP_KEY) then
+        BodyCam.stop()
+        return
+    end
+    if key ~= boundKey("toggleWindow", BodyCam.UI.TOGGLE_KEY) then return end
+    BodyCam.log("Hotkey pressed")
     if isCtrlKeyDown() then
         BodyCam.stop()
     else
@@ -201,4 +240,19 @@ local function onKeyPressed(key)
     end
 end
 
+-- Right-click the ground: alternative way to open the window (admins only).
+local function onFillWorldObjectContextMenu(playerNum, context, worldObjects, test)
+    if test then return end
+    local player = getSpecificPlayer(playerNum)
+    if not player or not BodyCam.isAllowed(player) then return end
+    local label = BodyCam.isActive() and "Body Cam (watching)..." or "Body Cam..."
+    context:addOption(label, nil, BodyCam.UI.toggle)
+    if BodyCam.isActive() then
+        context:addOption("Body Cam: stop watching", nil, BodyCam.stop)
+    end
+end
+
 Events.OnKeyPressed.Add(onKeyPressed)
+Events.OnFillWorldObjectContextMenu.Add(onFillWorldObjectContextMenu)
+
+BodyCam.log("Client UI loaded")

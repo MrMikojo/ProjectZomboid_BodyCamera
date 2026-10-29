@@ -77,9 +77,23 @@ stay empty). All code lives in `Contents/mods/BodyCam/42/`.
    comma-separated) in the server's `_SandboxVars.lua` or the panel. The server
    checks this for every request, so the password-protected public server stays
    safe: normal players can't locate anyone.
-2. **Leave any vehicle** and press **Insert** to open the Body Cam window.
+2. **Leave any vehicle** and press **Insert** to open the Body Cam window, or
+   right-click the ground → **Body Cam...**. The hotkeys can be rebound under
+   **Options → Mods → Body Cam** (handy on laptops without an Insert key).
 3. Select your streamer character and click **Watch** (or double-click it).
-4. **Ctrl+Insert** stops watching from anywhere (or use the Stop button).
+4. **Ctrl+Insert** stops watching from anywhere (or use the Stop button, the
+   right-click menu, or the optional "Stop watching" key).
+
+### Troubleshooting
+
+Open `%UserProfile%\Zomboid\console.txt` on the admin laptop and search for `[BodyCam]`:
+
+| What you see | Meaning |
+|---|---|
+| No `[BodyCam]` lines at all | The mod isn't loaded on this client: check it's in the server's mod list and downloaded |
+| `Client UI loaded` but no `Hotkey pressed` when you press Insert | The key isn't reaching the game (laptop Fn key?): rebind it in Options → Mods, or use right-click → Body Cam... |
+| `Game started as ..., allowed: false` | The account's role isn't recognised: set it to admin, or add the username to `BodyCam.AllowedUsers` |
+| `Server module loaded` missing from the **server** log | The mod isn't enabled on the server |
 
 Options (saved to `Zomboid/Lua/BodyCam_settings.txt`):
 

@@ -388,6 +388,11 @@ local resumeAt = nil
 
 local function onGameStart()
     BodyCam.loadSettings()
+    local player = getPlayer()
+    if player then
+        BodyCam.log("Game started as " .. tostring(player:getUsername()) .. ", role: " ..
+            tostring(BodyCam.getRoleName(player)) .. ", allowed: " .. tostring(BodyCam.isAllowed(player)))
+    end
     if BodyCam.settings.autoResume and BodyCam.settings.lastTarget ~= "" then
         -- Give the world and player list a few seconds to settle.
         resumeAt = now() + 5000
