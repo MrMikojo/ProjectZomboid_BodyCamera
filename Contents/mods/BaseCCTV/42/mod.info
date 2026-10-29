@@ -1,0 +1,10 @@
+name=Base CCTV (Viewpoint)
+id=BaseCCTV
+description=Watch CCTV cameras around your base from a computer, through Project Viewpoint's 3D camera. TEST BUILD: places test cameras by right-click; crafting and power rules come later.
+poster=poster.png
+icon=icon.png
+versionMin=42.0.0
+url=https://github.com/MrMikojo/ProjectZomboid_BodyCamera
+require=\ZombieBuddy
+javaJarFile=media/java/client/BaseCCTV.jar
+javaPkgName=basecctv

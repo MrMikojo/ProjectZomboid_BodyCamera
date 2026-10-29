@@ -1,9 +1,0 @@
-VERSION = 1,
-
-option BodyCam.AllowedUsers
-{
-    type = string,
-    default = ,
-    page = BodyCam,
-    translation = BodyCam_AllowedUsers,
-}

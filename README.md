@@ -1,171 +1,93 @@
-# Project Zomboid – Body Cam (Admin Spectator)
+# Project Zomboid – Base CCTV (for Project Viewpoint)
 
-A multiplayer mod for streamers. An **admin or moderator** on a second PC or laptop locks
-their view onto any online player as a **spectator camera held close above them**.
-It shows everything around the player, including what's behind them that they
-can't see themselves. Capture that laptop's game window in OBS and you have a
-second camera feed.
+Install CCTV cameras around your base and watch them from a computer, through
+[Project Viewpoint](https://steamcommunity.com/sharedfiles/filedetails/?id=3809306528)'s
+3D camera. You can look around from each camera.
 
-## How it works (and why)
+> **Status: test build.** This version proves the camera view works. Cameras are
+> placed with a right-click test menu, kept for the current session only, and
+> only you see them. Crafting, installing, power and "same building" rules come next.
 
-Project Zomboid's camera always follows the *local* player, and a client only
-loads the part of the map around its own character. Pointing the camera at a
-distant player isn't possible. Instead, while watching, the mod:
+## Requirements
 
-1. Makes the admin character **invisible, ghosted (zombies ignore you), god mode
-   and no-clip**, and saves the previous state so it can be restored afterwards.
-2. Turns on the admin powers **see everyone / hear everyone**, so zombies and
-   players behind the wearer stay visible on the feed.
-3. **Pins the admin character onto the wearer**, 24 times a second, about 250 ms
-   behind them. The camera then hangs above the wearer and zoomed in. It doesn't
-   rotate: north stays north, like a spectator camera.
-4. Asks the **server** where the wearer is every 2 seconds. If the wearer is far
-   away or out of sync, it teleports you there with `/teleportto` and then resumes
-   tight tracking. This also handles vehicles, fast travel and respawns.
-5. Draws a small **REC ● / unit label / in-game timestamp** overlay (optional). If
-   the wearer disconnects or dies, it shows **SIGNAL LOST** and keeps retrying.
+Every player needs:
 
-> **About the angle:** the vanilla camera is fixed at the game's isometric angle.
-> It can zoom right in on the wearer, but it can't point straight down from "3 feet
-> above the head". For that you'd need a 3D camera mod with a top-down mode. Body
-> Cam keeps the laptop's character on the wearer, so such a camera would follow
-> them too.
->
-> **Prefer the old chest-cam?** Tick **Turn with their body**. The view then copies
-> the wearer's body facing, vision cone included.
+- **ZombieBuddy** (Java mod loader), set up once as its Workshop page describes
+- **Project Viewpoint**, with the 3D view on (first or third person, key **O**)
+- **Base CCTV** (this mod). On first launch ZombieBuddy asks you to approve
+  BaseCCTV's Java code. The jar isn't signed yet, so it shows as unsigned.
 
-## Install (Build 42 dedicated server)
+Load order: ZombieBuddy, Project Viewpoint, then Base CCTV.
 
-A dedicated server, Indifferent Broccoli included, downloads mods from the Steam
-Workshop. Players' games then download them automatically when they join. So the
-easiest route is to upload this mod to the Workshop as an **Unlisted** item. It
-then won't show in Workshop search, but the server and your players can still
-download it.
+## How it works
 
-### 1. Upload to the Workshop (once, from your streaming PC)
+Viewpoint draws the game in 3D from a camera that normally sits in your
+character's head. Base CCTV's small Java add-on (`BaseCCTV.jar`, loaded by
+ZombieBuddy) hooks the same parts of Viewpoint that the *Death Cam* add-on
+uses. While you're viewing, it moves that camera to the CCTV camera's
+position and angle, and puts it back when you stop. The rest (menus, cameras,
+controls, overlay) is ordinary Lua, which talks to the Java add-on through
+`BaseCCTVJava`.
 
-1. Copy this whole repository folder (the one containing `preview.png` and
-   `Contents/`) to `%UserProfile%\Zomboid\Workshop\BodyCam\`.
-2. Start Project Zomboid → **Workshop** → **Create and update items** → pick
-   `BodyCam` → upload.
-3. On the Steam page that opens, set visibility to **Unlisted** (not *Private*,
-   or the server can't download it). Note the number at the end of the page's URL.
-   That's the **Workshop ID**.
+If a Viewpoint update changes those internals, the add-on switches itself off
+and writes a `[BaseCCTV]` line to `console.txt` instead of crashing.
 
-### 2. Enable it on the server (Indifferent Broccoli panel)
+## Testing the view (single player or your own server)
 
-1. Stop the server.
-2. Add the mod using the panel's mod manager, or edit the server `.ini`
-   (usually `servertest.ini`):
-   - add the Workshop ID to `WorkshopItems=`
-   - add `BodyCam` to `Mods=` (match the format the existing entries use; Build 42
-     entries may start with a backslash, e.g. `\BodyCam`)
-3. Start the server. Both your streaming account and the admin laptop download
-   the mod automatically when they connect.
+1. Copy `Contents/mods/BaseCCTV` to `%UserProfile%\Zomboid\mods\BaseCCTV` and
+   enable it (with ZombieBuddy and Viewpoint).
+2. In game, switch Viewpoint to first person (**O**) and free the cursor
+   (middle mouse button) so you can right-click.
+3. Stand somewhere in your base, right-click a floor tile a few tiles away →
+   **CCTV (test) → Add test camera here**. The camera goes near the ceiling
+   above that tile, facing where you stood. Add a few.
+4. Right-click a **computer → View Cameras**. If your computer doesn't get the
+   option, use **CCTV (test) → View cameras (without a computer)** and also
+   **CCTV (test) → Log clicked objects** on the computer. Send me the log line so I
+   can recognise it.
 
-### Testing locally first (optional)
+While viewing:
 
-Copy `Contents/mods/BodyCam` to `%UserProfile%\Zomboid\mods\BodyCam`, enable it
-in **Mods**, and start a single-player game. The window opens with **Insert**
-(single player has no other players to watch, but you can check the UI loads).
-
-### Folder layout
-
-Build 42 only loads mods that have a `42/` folder (and a `common/` folder, which can
-stay empty). All code lives in `Contents/mods/BodyCam/42/`.
-
-## Usage (on the admin laptop)
-
-1. Log in with an account that has the **admin**, **moderator**, **overseer** or **gm**
-   role (`/setaccesslevel "Name" admin` from the server console or panel). If you
-   use a custom role name, add the admin account's username to the
-   **Body Cam → Allowed usernames** sandbox option (`BodyCam.AllowedUsers`,
-   comma-separated) in the server's `_SandboxVars.lua` or the panel. The server
-   checks this for every request, so the password-protected public server stays
-   safe: normal players can't locate anyone.
-2. **Leave any vehicle** and press **Insert** to open the Body Cam window, or
-   right-click the ground → **Body Cam...**. The hotkeys can be rebound under
-   **Options → Mods → Body Cam** (handy on laptops without an Insert key).
-3. Select your streamer character and click **Watch** (or double-click it).
-4. **Ctrl+Insert** stops watching from anywhere (or use the Stop button, the
-   right-click menu, or the optional "Stop watching" key).
-
-### Troubleshooting
-
-Open `%UserProfile%\Zomboid\console.txt` on the admin laptop and search for `[BodyCam]`:
-
-| What you see | Meaning |
+| Key | Action |
 |---|---|
-| No `[BodyCam]` lines at all | The mod isn't loaded on this client: check it's in the server's mod list and downloaded |
-| `Client UI loaded` but no `Hotkey pressed` when you press Insert | The key isn't reaching the game (laptop Fn key?): rebind it in Options → Mods, or use right-click → Body Cam... |
-| `Game started as ..., allowed: false` | The account's role isn't recognised: set it to admin, or add the username to `BodyCam.AllowedUsers` |
-| `Server module loaded` missing from the **server** log | The mod isn't enabled on the server |
-| `Signal lost: <reason>` | Why the feed dropped (target not synced, too far, stopped updating, dead). Send these lines when reporting problems |
-| `Follow error: ...` | A bug in the follow loop. It stops itself after repeated errors instead of lagging the game |
+| Arrow keys | Look around (up to 75° either side of where the camera faces) |
+| `+` / `-` | Zoom |
+| `,` / `.` | Previous / next camera |
+| Backspace | Stop viewing (also: right-click → CCTV: stop viewing) |
 
-Options (saved to `Zomboid/Lua/BodyCam_settings.txt`):
+Viewing stops by itself if you walk away from where you started, get hurt, or die.
 
-| Option | What it does |
-|---|---|
-| Show REC / timestamp overlay | Blinking REC dot, unit label, in-game date/time |
-| See everyone | Admin see/hear-everyone powers while watching, so whatever's behind the wearer shows on the feed (default on) |
-| Turn with their body | Chest-cam style: copy the wearer's body facing and vision cone (default off) |
-| Hide my own character model | Hides the admin's semi-transparent model, which otherwise overlaps the wearer |
-| Zoom in when starting | Applies N zoom-in steps (default 5, adjustable), undone on stop. The game stops at its closest zoom level |
-| Teleport back when stopping | Returns you to where you started |
-| Resume last target after login | Rejoins the feed automatically after a reconnect (handy for long streams) |
-| Forward offset | Moves the view center N tiles in front of the wearer (0 keeps them centered) |
-| Camera update rate | How many times a second the view moves (default **24 fps**, choices 12–60). Gives a choppier camera cadence and less work per second |
-| Camera delay | How far behind the wearer the view runs (default 250 ms, 0–1000). Smooths network jitter; raise it if movement stutters |
+### What to look for
 
-The unit label shown in the overlay (default `UNIT 01`) can be changed in the
-settings file (`unitLabel=...`). Your OBS VHS shader goes on top of the in-game
-REC/timestamp overlay, so they combine naturally.
+- Does the view jump to the camera and turn with the arrow keys?
+- Is your own character visible when a camera looks at you?
+- **Zombies and players:** are they visible to the camera even when your character
+  can't see them? This decides how the next version works.
+- The `[BaseCCTV]` lines in `console.txt`: `client loaded; Java add-on found`,
+  `viewing camera at ...`, or any `switched off` / `view error` lines.
 
-### With Project Viewpoint
+## Building the Java add-on
 
-- Use the **normal (non-first-person) view** on the admin laptop for this camera
-  (Viewpoint: **O** toggles first person).
-- Viewpoint's free camera is **Insert + O**, which also opens the Body Cam window.
-  Rebind one of them (Body Cam: **Options → Mods → Body Cam**).
-
-### OBS / streaming tips
-
-- In the game's **Options → Display**, enable the closest zoom levels so the
-  camera can sit tight above the wearer.
-- Hide the vanilla HUD on the admin laptop, or crop it out in OBS. The overlay is
-  drawn in the top corners.
-- Turn the overlay off if you'd rather build the body-cam frame in OBS.
-
-## Caveats
-
-- In multiplayer, the client nearest to zombies may be put in charge of
-  simulating them. With the admin laptop sitting on your character, a bad
-  connection there could make nearby zombies laggy. Use a wired or stable connection.
-- Build 42 multiplayer has stronger anti-cheat. Admin roles are normally exempt,
-  but if the admin laptop gets kicked or rubber-bands while following, check the
-  server log for anti-cheat entries and loosen that specific check (or tell me
-  what it says).
-- If you still see a ghostly copy of the admin character on top of yours (some
-  builds ignore the hide call), take the admin character's clothes off so it
-  stays mostly unnoticeable.
-- The darkening of tiles outside a character's view comes from the admin
-  character's own vision cone. "See everyone" keeps zombies and players visible
-  there, but the ground may still be shaded on one side. Tell me how it looks.
+`java/BaseCCTV/build.sh` compiles `BaseCCTV.jar` into the mod folder (JDK 17+;
+targets Java 17 like Death Cam, so it loads on ZombieBuddy 2.x and 3.x). The
+`stubs/` folder only satisfies the compiler and is never packaged: the real
+ZombieBuddy and Viewpoint classes come from the game at runtime.
 
 ## Files
 
 ```
-preview.png                                       Workshop thumbnail
-Contents/mods/BodyCam/
-  common/                                         required by Build 42 (empty)
+preview.png                                     Workshop thumbnail
+Contents/mods/BaseCCTV/
+  common/                                       required by Build 42 (empty)
   42/
     mod.info, poster.png, icon.png
-    media/sandbox-options.txt                     BodyCam.AllowedUsers option
-    media/lua/shared/BodyCam/BodyCam_Shared.lua   role checks, constants
-    media/lua/shared/Translate/EN/Sandbox_EN.txt  sandbox option labels
-    media/lua/server/BodyCam/BodyCam_Server.lua   answers "list players" / "where is X" (admins only)
-    media/lua/client/BodyCam/BodyCam_Client.lua   follow logic, flags, settings
-    media/lua/client/BodyCam/BodyCam_Overlay.lua  REC / timestamp overlay
-    media/lua/client/BodyCam/BodyCam_UI.lua       control window + hotkeys
+    media/java/client/BaseCCTV.jar              Java add-on (built from java/BaseCCTV)
+    media/lua/client/BaseCCTV/CCTV_Client.lua   cameras, viewing, controls, menus
+    media/lua/client/BaseCCTV/CCTV_Overlay.lua  REC / camera name / timestamp overlay
+java/BaseCCTV/
+  src/basecctv/                                 add-on source (Viewpoint hooks + Lua API)
+  stubs/                                        compile-time stand-ins (not packaged)
+  build.sh
 ```
+
+The earlier Body Cam (admin spectator) mod is in this repository's git history.

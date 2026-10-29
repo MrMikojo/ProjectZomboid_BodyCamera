@@ -1,7 +1,0 @@
-name=Body Cam (Admin Spectator)
-id=BodyCam
-description=Lets an admin/moderator lock their view onto any online player, simulating a chest-mounted body camera. Built for streamers who capture a second admin client in OBS.
-poster=poster.png
-icon=icon.png
-versionMin=42.0.0
-url=https://github.com/MrMikojo/ProjectZomboid_BodyCamera
