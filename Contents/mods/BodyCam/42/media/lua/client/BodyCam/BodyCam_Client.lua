@@ -3,8 +3,12 @@
 -- Project Zomboid's camera always follows the local player and the client only
 -- loads/streams the world around that player. So instead of moving the camera,
 -- the (invisible, ghosted, no-clipping) admin character is pinned onto the
--- target's position and facing every tick. The camera, line of sight and vision
--- cone then match what the target sees, like a chest-mounted camera.
+-- target's position and facing. The camera, line of sight and vision cone then
+-- match what the target sees, like a chest-mounted camera.
+--
+-- The target is sampled every tick into a short buffer, and the view is moved
+-- `updateFps` times a second to where the target was `delayMs` ago. The delay
+-- smooths out network jitter; the fixed rate gives a camera-like cadence.
 
 require "BodyCam/BodyCam_Shared"
 
@@ -17,6 +21,8 @@ BodyCam.settings = {
     returnOnStop = true,    -- teleport back to where you started
     autoResume = false,     -- resume watching the last target after login
     forwardOffset = 0,      -- tiles ahead of the target to center the view
+    updateFps = 24,         -- how often the view moves (body cam frame rate)
+    delayMs = 250,          -- how far behind the target the view runs
     unitLabel = "UNIT 01",  -- text shown in the overlay
     lastTarget = "",
 }
@@ -236,6 +242,7 @@ function BodyCam.start(username)
         end
     end
 
+    BodyCam.clearSamples()
     BodyCam.settings.lastTarget = username
     BodyCam.saveSettings()
     requestLocate()
@@ -253,6 +260,7 @@ function BodyCam.stop()
     s.signalLost = false
     s.lostSince = nil
     s.lastTargetPos = nil
+    BodyCam.clearSamples()
 
     if player then
         setSelfAlpha(player, 1)
@@ -279,32 +287,93 @@ end
 -- Per-tick follow
 ----------------------------------------------------------------------------
 
-local function pinTo(player, target)
-    local tx, ty, tz = target:getX(), target:getY(), target:getZ()
-    local fwd = tryCall(target, "getForwardDirection")
-    local fx, fy = 0, 0
-    if fwd then fx, fy = fwd:getX(), fwd:getY() end
+local samples = {}          -- { t, x, y, z, angle, dir }, oldest first
+local lastApply = 0
+local JUMP_DISTANCE = 5     -- tiles between samples that count as a teleport, not movement
 
-    local offset = BodyCam.settings.forwardOffset or 0
-    local x, y = tx + fx * offset, ty + fy * offset
+function BodyCam.clearSamples()
+    samples = {}
+end
 
-    player:setX(x); player:setY(y); player:setZ(tz)
-    -- Previous-position setters: setLastX in Build 42, setLx in Build 41.
-    if player.setLastX then
-        tryCall(player, "setLastX", x); tryCall(player, "setLastY", y); tryCall(player, "setLastZ", tz)
-    elseif player.setLx then
-        tryCall(player, "setLx", x); tryCall(player, "setLy", y); tryCall(player, "setLz", tz)
+local function recordSample(target)
+    local angle = tryCall(target, "getDirectionAngle")
+    if angle == nil then
+        local fwd = tryCall(target, "getForwardDirection")
+        if fwd and math.atan2 then angle = math.deg(math.atan2(fwd:getY(), fwd:getX())) end
     end
+    table.insert(samples, {
+        t = now(),
+        x = target:getX(), y = target:getY(), z = target:getZ(),
+        angle = angle,
+        dir = tryCall(target, "getDir"),
+    })
+    local keepAfter = now() - (BodyCam.settings.delayMs or 0) - 1000
+    while #samples > 2 and samples[2].t < keepAfter do
+        table.remove(samples, 1)
+    end
+end
 
-    if BodyCam.settings.matchFacing then
-        local dir = tryCall(target, "getDir")
-        if dir then tryCall(player, "setDir", dir) end
-        if fwd then
-            -- (x, y) in some builds, (Vector2) in others; the wrong one fails silently.
-            tryCall(player, "setForwardDirection", fx, fy)
-            tryCall(player, "setForwardDirection", fwd)
+local function lerpAngle(a, b, f)
+    local d = (b - a + 540) % 360 - 180
+    return a + d * f
+end
+
+-- Where the target was at time t, interpolated between buffered samples.
+local function sampleAt(t)
+    local n = #samples
+    if n == 0 then return nil end
+    if t <= samples[1].t then return samples[1] end
+    for i = n, 2, -1 do
+        local a, b = samples[i - 1], samples[i]
+        if a.t <= t then
+            if t >= b.t then return b end
+            local dx, dy = b.x - a.x, b.y - a.y
+            if dx * dx + dy * dy > JUMP_DISTANCE * JUMP_DISTANCE or math.floor(a.z) ~= math.floor(b.z) then
+                return b
+            end
+            local f = (t - a.t) / math.max(1, b.t - a.t)
+            local angle = b.angle
+            if a.angle and b.angle then angle = lerpAngle(a.angle, b.angle, f) end
+            return {
+                x = a.x + dx * f, y = a.y + dy * f, z = b.z,
+                angle = angle,
+                dir = f < 0.5 and a.dir or b.dir,
+            }
         end
     end
+    return samples[n]
+end
+
+local function pinTo(player, sample)
+    local fx, fy = 0, 0
+    if sample.angle then
+        fx, fy = math.cos(math.rad(sample.angle)), math.sin(math.rad(sample.angle))
+    end
+    local offset = BodyCam.settings.forwardOffset or 0
+    local x, y, z = sample.x + fx * offset, sample.y + fy * offset, sample.z
+
+    player:setX(x); player:setY(y); player:setZ(z)
+    -- Previous-position setters: setLastX in Build 42, setLx in Build 41.
+    if player.setLastX then
+        tryCall(player, "setLastX", x); tryCall(player, "setLastY", y); tryCall(player, "setLastZ", z)
+    elseif player.setLx then
+        tryCall(player, "setLx", x); tryCall(player, "setLy", y); tryCall(player, "setLz", z)
+    end
+
+    if BodyCam.settings.matchFacing and sample.angle then
+        if sample.dir then tryCall(player, "setDir", sample.dir) end
+        tryCall(player, "setDirectionAngle", sample.angle)
+        tryCall(player, "setForwardDirection", fx, fy)
+    end
+end
+
+-- Move the view at most updateFps times a second, to where the target was delayMs ago.
+local function applyDelayed(player)
+    local fps = math.max(1, BodyCam.settings.updateFps or 24)
+    if now() - lastApply < 1000 / fps then return end
+    lastApply = now()
+    local sample = sampleAt(now() - (BodyCam.settings.delayMs or 0))
+    if sample then pinTo(player, sample) end
 end
 
 -- Re-apply flags (throttled) without overwriting the originally saved values.
@@ -383,12 +452,14 @@ local function followTick()
         else
             setLost(s, false)
         end
-        pinTo(player, target)
+        recordSample(target)
+        applyDelayed(player)
     elseif s.serverPos then
         setLost(s, true, reason)
         local dx = s.serverPos.x - player:getX()
         local dy = s.serverPos.y - player:getY()
         if math.sqrt(dx * dx + dy * dy) > 2 or math.floor(player:getZ()) ~= math.floor(s.serverPos.z) then
+            BodyCam.clearSamples()
             teleportTo(s.serverPos.x, s.serverPos.y, s.serverPos.z)
         end
     else

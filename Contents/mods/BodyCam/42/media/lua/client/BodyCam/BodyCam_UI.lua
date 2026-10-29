@@ -52,7 +52,7 @@ local OPTIONS = {
 }
 
 function BodyCamWindow:new(x, y)
-    local o = ISPanel.new(self, x, y, 340, 470)
+    local o = ISPanel.new(self, x, y, 340, 530)
     o.moveWithMouse = true
     o.backgroundColor = { r = 0, g = 0, b = 0, a = 0.85 }
     o.borderColor = { r = 0.6, g = 0.1, b = 0.1, a = 1 }
@@ -106,7 +106,20 @@ function BodyCamWindow:createChildren()
     self.btnZoomMinus.internal = -1
     self.btnZoomPlus = ISButton:new(self.width - PAD - sb, y, sb, 20, "+", self, BodyCamWindow.onZoomSteps)
     self.btnZoomPlus.internal = 1
-    for _, b in ipairs({ self.btnOffMinus, self.btnOffPlus, self.btnZoomMinus, self.btnZoomPlus }) do
+    y = y + 26
+    self.fpsY = y
+    self.btnFpsMinus = ISButton:new(self.width - PAD - sb * 2 - 4, y, sb, 20, "-", self, BodyCamWindow.onFps)
+    self.btnFpsMinus.internal = -1
+    self.btnFpsPlus = ISButton:new(self.width - PAD - sb, y, sb, 20, "+", self, BodyCamWindow.onFps)
+    self.btnFpsPlus.internal = 1
+    y = y + 26
+    self.delayY = y
+    self.btnDelayMinus = ISButton:new(self.width - PAD - sb * 2 - 4, y, sb, 20, "-", self, BodyCamWindow.onDelay)
+    self.btnDelayMinus.internal = -50
+    self.btnDelayPlus = ISButton:new(self.width - PAD - sb, y, sb, 20, "+", self, BodyCamWindow.onDelay)
+    self.btnDelayPlus.internal = 50
+    for _, b in ipairs({ self.btnOffMinus, self.btnOffPlus, self.btnZoomMinus, self.btnZoomPlus,
+                         self.btnFpsMinus, self.btnFpsPlus, self.btnDelayMinus, self.btnDelayPlus }) do
         b:initialise(); b:instantiate(); self:addChild(b)
     end
     y = y + 30
@@ -123,6 +136,10 @@ function BodyCamWindow:render()
         PAD, self.offsetY + 2, 1, 1, 1, 0.9, FONT)
     self:drawText(string.format("Zoom-in steps on start: %d", BodyCam.settings.zoomSteps),
         PAD, self.zoomY + 2, 1, 1, 1, 0.9, FONT)
+    self:drawText(string.format("Camera update rate: %d fps", BodyCam.settings.updateFps),
+        PAD, self.fpsY + 2, 1, 1, 1, 0.9, FONT)
+    self:drawText(string.format("Camera delay: %d ms", BodyCam.settings.delayMs),
+        PAD, self.delayY + 2, 1, 1, 1, 0.9, FONT)
 
     local status
     if BodyCam.isActive() then
@@ -187,6 +204,25 @@ end
 function BodyCamWindow:onZoomSteps(button)
     local v = BodyCam.settings.zoomSteps + button.internal
     BodyCam.settings.zoomSteps = math.max(0, math.min(6, v))
+    BodyCam.saveSettings()
+end
+
+local FPS_STEPS = { 12, 15, 20, 24, 30, 60 }
+
+function BodyCamWindow:onFps(button)
+    local current = BodyCam.settings.updateFps
+    local index = #FPS_STEPS
+    for i, v in ipairs(FPS_STEPS) do
+        if v >= current then index = i; break end
+    end
+    index = math.max(1, math.min(#FPS_STEPS, index + button.internal))
+    BodyCam.settings.updateFps = FPS_STEPS[index]
+    BodyCam.saveSettings()
+end
+
+function BodyCamWindow:onDelay(button)
+    local v = BodyCam.settings.delayMs + button.internal
+    BodyCam.settings.delayMs = math.max(0, math.min(1000, v))
     BodyCam.saveSettings()
 end
 

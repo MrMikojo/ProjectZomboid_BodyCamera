@@ -108,10 +108,21 @@ Options (saved to `Zomboid/Lua/BodyCam_settings.txt`):
 | Teleport back when stopping | Returns you to where you started |
 | Resume last target after login | Rejoins the feed automatically after a reconnect (handy for long streams) |
 | Forward offset | Moves the view center N tiles in front of the wearer |
+| Camera update rate | How many times a second the view moves (default **24 fps**, choices 12–60). Gives the choppier body-cam cadence and less work per second |
+| Camera delay | How far behind the wearer the view runs (default 250 ms, 0–1000). Smooths network jitter; raise it if movement stutters |
 
 The unit label shown in the overlay (default `UNIT 01`) can be changed in the
 settings file (`unitLabel=...`). Your OBS VHS shader goes on top of the in-game
 REC/timestamp overlay, so they combine naturally.
+
+### With Project Viewpoint (first person)
+
+- Viewpoint's free camera is **Insert + O**, which also opens the Body Cam window.
+  Rebind one of them (Body Cam: **Options → Mods → Body Cam**).
+- Body Cam turns the laptop's character to match the wearer's body facing every
+  update. Whether Viewpoint's first-person view turns with it depends on whether
+  Viewpoint follows the character's facing or only the mouse. If the view doesn't
+  rotate, release the mouse (middle mouse button) on the laptop.
 
 ### OBS / streaming tips
 
