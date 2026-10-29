@@ -38,6 +38,9 @@ local LOCATE_INTERVAL_MS = 2000
 local TELEPORT_COOLDOWN_MS = 3000
 local NEAR_DISTANCE = 40    -- tiles; closer than this we track the local copy of the target
 local DRIFT_DISTANCE = 10   -- server vs local position mismatch that means local copy is stale
+local STALE_MS = 3000       -- local copy must be frozen this long before we call it stale
+local LOST_GRACE_MS = 1500  -- hide brief hiccups from the SIGNAL LOST overlay
+local MAX_TICK_ERRORS = 30  -- stop instead of spamming the log every tick
 
 ----------------------------------------------------------------------------
 -- Settings persistence (client-side file in Zomboid/Lua/)
@@ -248,6 +251,8 @@ function BodyCam.stop()
     s.targetName = nil
     s.serverPos = nil
     s.signalLost = false
+    s.lostSince = nil
+    s.lastTargetPos = nil
 
     if player then
         setSelfAlpha(player, 1)
@@ -284,7 +289,12 @@ local function pinTo(player, target)
     local x, y = tx + fx * offset, ty + fy * offset
 
     player:setX(x); player:setY(y); player:setZ(tz)
-    player:setLx(x); player:setLy(y); player:setLz(tz)
+    -- Previous-position setters: setLastX in Build 42, setLx in Build 41.
+    if player.setLastX then
+        tryCall(player, "setLastX", x); tryCall(player, "setLastY", y); tryCall(player, "setLastZ", tz)
+    elseif player.setLx then
+        tryCall(player, "setLx", x); tryCall(player, "setLy", y); tryCall(player, "setLz", tz)
+    end
 
     if BodyCam.settings.matchFacing then
         local dir = tryCall(target, "getDir")
@@ -308,7 +318,39 @@ local function ensureSpectatorFlags(player)
     if saved then BodyCam.state.savedFlags = saved end
 end
 
-local function onTick()
+-- Remote players are interpolated, and the server position we compare against is
+-- up to a couple of seconds old, so a moving target always "drifts" from it.
+-- Only treat the local copy as stale if it has stopped updating.
+local function isLocalCopyStale(s, target)
+    local tx, ty = target:getX(), target:getY()
+    local last = s.lastTargetPos
+    if not last or last.name ~= s.targetName or math.abs(last.x - tx) > 0.01 or math.abs(last.y - ty) > 0.01 then
+        s.lastTargetPos = { name = s.targetName, x = tx, y = ty, time = now() }
+        return false
+    end
+    if now() - last.time < STALE_MS or not s.serverPos then return false end
+    local dx = s.serverPos.x - tx
+    local dy = s.serverPos.y - ty
+    return math.sqrt(dx * dx + dy * dy) > DRIFT_DISTANCE
+end
+
+local lastReason = nil
+local function setLost(s, lost, reason)
+    if lost then
+        s.lostSince = s.lostSince or now()
+        if reason ~= lastReason then
+            BodyCam.log("Signal lost: " .. reason)
+            lastReason = reason
+        end
+    else
+        if s.lostSince and lastReason then BodyCam.log("Signal recovered") end
+        s.lostSince = nil
+        lastReason = nil
+    end
+    s.signalLost = s.lostSince ~= nil and now() - s.lostSince > LOST_GRACE_MS
+end
+
+local function followTick()
     local s = BodyCam.state
     if not s.active then return end
     local player = getPlayer()
@@ -324,32 +366,51 @@ local function onTick()
     requestLocate()
 
     local target = BodyCam.findLocalTarget(s.targetName)
-    local useLocal = false
-    if target and target:getCurrentSquare() then
-        local dist = player:DistTo(target)
-        useLocal = dist < NEAR_DISTANCE
-        -- Local copy can be stale if the target isn't being synced to us.
-        if useLocal and s.serverPos then
-            local dx = s.serverPos.x - target:getX()
-            local dy = s.serverPos.y - target:getY()
-            if math.sqrt(dx * dx + dy * dy) > DRIFT_DISTANCE then
-                useLocal = false
-            end
-        end
+    local reason = nil
+    if not target then
+        reason = "target not synced to this client"
+    elseif not target:getCurrentSquare() then
+        reason = "target's area not loaded"
+    elseif player:DistTo(target) >= NEAR_DISTANCE then
+        reason = string.format("target %.0f tiles away", player:DistTo(target))
+    elseif isLocalCopyStale(s, target) then
+        reason = "local copy of target stopped updating"
     end
 
-    if useLocal then
-        s.signalLost = target:isDead()
+    if not reason then
+        if target:isDead() then
+            setLost(s, true, "target is dead")
+        else
+            setLost(s, false)
+        end
         pinTo(player, target)
     elseif s.serverPos then
-        s.signalLost = true
+        setLost(s, true, reason)
         local dx = s.serverPos.x - player:getX()
         local dy = s.serverPos.y - player:getY()
         if math.sqrt(dx * dx + dy * dy) > 2 or math.floor(player:getZ()) ~= math.floor(s.serverPos.z) then
             teleportTo(s.serverPos.x, s.serverPos.y, s.serverPos.z)
         end
     else
-        s.signalLost = true
+        setLost(s, true, reason .. ", waiting for server position")
+    end
+end
+
+-- Any error in the follow loop would otherwise repeat (and be logged) every tick.
+local tickErrors = 0
+local function onTick()
+    if not BodyCam.state.active then return end
+    local ok, err = pcall(followTick)
+    if ok then
+        tickErrors = 0
+        return
+    end
+    tickErrors = tickErrors + 1
+    if tickErrors == 1 then BodyCam.log("Follow error: " .. tostring(err)) end
+    if tickErrors >= MAX_TICK_ERRORS then
+        tickErrors = 0
+        BodyCam.stop()
+        BodyCam.say("Body Cam stopped after repeated errors - please send console.txt")
     end
 end
 

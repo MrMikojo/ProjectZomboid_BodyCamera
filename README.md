@@ -94,6 +94,8 @@ Open `%UserProfile%\Zomboid\console.txt` on the admin laptop and search for `[Bo
 | `Client UI loaded` but no `Hotkey pressed` when you press Insert | The key isn't reaching the game (laptop Fn key?): rebind it in Options → Mods, or use right-click → Body Cam... |
 | `Game started as ..., allowed: false` | The account's role isn't recognised: set it to admin, or add the username to `BodyCam.AllowedUsers` |
 | `Server module loaded` missing from the **server** log | The mod isn't enabled on the server |
+| `Signal lost: <reason>` | Why the feed dropped (target not synced, too far, stopped updating, dead). Send these lines when reporting problems |
+| `Follow error: ...` | A bug in the follow loop. It stops itself after repeated errors instead of lagging the game |
 
 Options (saved to `Zomboid/Lua/BodyCam_settings.txt`):
 
