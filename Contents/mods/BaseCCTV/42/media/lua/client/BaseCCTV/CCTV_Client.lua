@@ -71,24 +71,25 @@ end
 -- Computers
 ----------------------------------------------------------------------------
 
+-- Sprite and object names only: property lookups throw on some Build 42 objects,
+-- and Viewpoint builds this menu in the background, so errors here add up fast.
 function BaseCCTV.describe(obj)
-    local sprite = obj and obj.getSprite and obj:getSprite()
-    local spriteName = sprite and sprite:getName() or "?"
-    local custom = "?"
-    local props = obj and obj.getProperties and obj:getProperties()
-    if props then
-        local ok, v = pcall(function() return props:Val("CustomName") end)
-        if ok and v then custom = tostring(v) end
+    local spriteName, objectName = "?", "?"
+    if obj and obj.getSprite then
+        local sprite = obj:getSprite()
+        if sprite and sprite.getName then spriteName = tostring(sprite:getName()) end
     end
-    return spriteName, custom
+    if obj and obj.getObjectName then objectName = tostring(obj:getObjectName()) end
+    return spriteName, objectName
 end
 
 function BaseCCTV.isComputer(obj)
     if not obj then return false end
-    local spriteName, custom = BaseCCTV.describe(obj)
-    spriteName, custom = string.lower(spriteName), string.lower(custom)
+    local spriteName, objectName = BaseCCTV.describe(obj)
+    spriteName, objectName = string.lower(spriteName), string.lower(objectName)
     return string.find(spriteName, "appliances_com_01", 1, true) ~= nil
-        or string.find(custom, "computer", 1, true) ~= nil
+        or string.find(spriteName, "computer", 1, true) ~= nil
+        or string.find(objectName, "computer", 1, true) ~= nil
 end
 
 ----------------------------------------------------------------------------
@@ -287,7 +288,7 @@ local function onFillWorldObjectContextMenu(playerNum, context, worldObjects, te
     sub:addOption("Log clicked objects", worldObjects, function(objs)
         for _, obj in ipairs(objs) do
             local spriteName, custom = BaseCCTV.describe(obj)
-            BaseCCTV.log("object sprite=" .. spriteName .. " customName=" .. custom
+            BaseCCTV.log("object sprite=" .. spriteName .. " objectName=" .. custom
                 .. " computer=" .. tostring(BaseCCTV.isComputer(obj)))
         end
         BaseCCTV.say("CCTV: object names written to console.txt")
