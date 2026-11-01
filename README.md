@@ -50,7 +50,7 @@ While viewing:
 
 | Key | Action |
 |---|---|
-| Arrow keys | Look around (up to 75° either side of where the camera faces) |
+| Arrow keys | Look around: left/right spins a full 360°, up/down tilts. Each camera remembers where you left it |
 | `+` / `-` | Zoom |
 | `,` / `.` | Previous / next camera |
 | Backspace | Stop viewing (also: right-click → CCTV: stop viewing) |

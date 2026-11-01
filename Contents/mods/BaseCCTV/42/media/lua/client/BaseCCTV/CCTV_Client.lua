@@ -16,7 +16,6 @@ BaseCCTV.view = {
     startedAt = 0, startFrames = 0,
 }
 
-local PAN_LIMIT = 75          -- degrees either side of where the camera is mounted
 local PITCH_MIN, PITCH_MAX = -80, 15
 local FOV_MIN, FOV_MAX = 30, 90
 local TURN_SPEED = 60         -- degrees per second
@@ -63,8 +62,9 @@ local function isKey(key, name)
     return Keyboard[name] ~= nil and key == Keyboard[name]
 end
 
-local function angleDiff(a, b)
-    return (a - b + 540) % 360 - 180
+-- Keep yaw in 0..360 so it can spin all the way round without growing.
+local function wrapYaw(a)
+    return a % 360
 end
 
 ----------------------------------------------------------------------------
@@ -105,8 +105,9 @@ local function aimAt(index)
     v.index = index
     local cam = currentCamera()
     if cam then
-        v.yaw = cam.yaw
-        v.pitch = -25
+        -- Each camera remembers where it was last pointed.
+        v.yaw = cam.lookYaw or cam.yaw
+        v.pitch = cam.lookPitch or -25
     end
 end
 
@@ -203,8 +204,9 @@ local function viewTick()
     if keyDown("KEY_DOWN") then v.pitch = v.pitch - TURN_SPEED * dt end
     if keyDown("KEY_ADD", "KEY_EQUALS") then v.fov = v.fov - ZOOM_SPEED * dt end
     if keyDown("KEY_SUBTRACT", "KEY_MINUS") then v.fov = v.fov + ZOOM_SPEED * dt end
-    v.yaw = cam.yaw + clamp(angleDiff(v.yaw, cam.yaw), -PAN_LIMIT, PAN_LIMIT)
+    v.yaw = wrapYaw(v.yaw)
     v.pitch = clamp(v.pitch, PITCH_MIN, PITCH_MAX)
+    cam.lookYaw, cam.lookPitch = v.yaw, v.pitch
     v.fov = clamp(v.fov, FOV_MIN, FOV_MAX)
 
     BaseCCTVJava.setView(cam.x, cam.y, cam.z, v.yaw, v.pitch, v.fov)
