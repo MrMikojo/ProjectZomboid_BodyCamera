@@ -15,6 +15,15 @@ public class BaseCCTVJava {
         Cctv.release();
     }
 
+    // Test switch: also move the point Viewpoint builds the world around (off by default).
+    public static void setMoveCentre(boolean on) {
+        Cctv.setMoveCentre(on);
+    }
+
+    public static boolean getMoveCentre() {
+        return Cctv.getMoveCentre();
+    }
+
     // Number of Viewpoint 3D frames seen; if it doesn't grow, the 3D view isn't running.
     public static double getFrames() {
         return Cctv.frames();

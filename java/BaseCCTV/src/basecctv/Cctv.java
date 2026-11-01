@@ -18,6 +18,9 @@ public final class Cctv {
     private static volatile boolean centreHooked;
     private static volatile boolean viewHooked;
     private static volatile double frames;
+    // Off by default: Viewpoint may hang its sound listener on the centre, and
+    // cameras in the same building are inside the world Viewpoint already loads.
+    private static volatile boolean moveCentre;
     private static Object bodyFrame;
     private static boolean wasActive;
     private static final double[] origin = new double[3];
@@ -31,6 +34,15 @@ public final class Cctv {
 
     static void release() {
         wanted = null;
+    }
+
+    static void setMoveCentre(boolean on) {
+        moveCentre = on;
+        System.out.println(TAG + "move world centre with camera: " + on);
+    }
+
+    static boolean getMoveCentre() {
+        return moveCentre;
     }
 
     static double frames() {
@@ -67,7 +79,8 @@ public final class Cctv {
             if (!wasActive) {
                 wasActive = true;
                 System.out.println(TAG + "viewing camera at " + (int) p[0] + "," + (int) p[1] + "," + (int) p[2]
-                        + " (hooks: centre " + centreHooked + ", view " + viewHooked + ")");
+                        + " (hooks: centre " + centreHooked + ", view " + viewHooked
+                        + "; moving centre: " + moveCentre + ")");
             }
         } catch (Throwable t) {
             fail(t);
@@ -78,7 +91,7 @@ public final class Cctv {
     public static Object centre(Object original) {
         centreHooked = true;
         Object p = place;
-        return active && !broken && p != null ? p : original;
+        return moveCentre && active && !broken && p != null ? p : original;
     }
 
     // Viewpoint FreeCam.view: eye offset from the frame origin and look direction.

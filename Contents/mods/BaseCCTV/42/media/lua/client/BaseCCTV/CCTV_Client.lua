@@ -285,6 +285,13 @@ local function onFillWorldObjectContextMenu(playerNum, context, worldObjects, te
     if #BaseCCTV.cameras > 0 then
         sub:addOption("Remove all test cameras", nil, BaseCCTV.clearTestCameras)
     end
+    if javaReady() and BaseCCTVJava.setMoveCentre then
+        local on = BaseCCTVJava.getMoveCentre()
+        sub:addOption("Sound test: move world centre with camera (" .. (on and "ON" or "OFF") .. ")", nil, function()
+            BaseCCTVJava.setMoveCentre(not on)
+            BaseCCTV.say("CCTV: move world centre with camera " .. (on and "OFF" or "ON"))
+        end)
+    end
     sub:addOption("Log clicked objects", worldObjects, function(objs)
         for _, obj in ipairs(objs) do
             local spriteName, custom = BaseCCTV.describe(obj)

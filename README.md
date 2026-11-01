@@ -63,6 +63,9 @@ Viewing stops by itself if you walk away from where you started, get hurt, or di
 - Is your own character visible when a camera looks at you?
 - **Zombies and players:** are they visible to the camera even when your character
   can't see them? This decides how the next version works.
+- **Sound** should stay with your character while viewing. If it cuts out, try
+  **CCTV (test) → Sound test: move world centre with camera** to compare (it's
+  OFF by default) and report which setting keeps the sound.
 - The `[BaseCCTV]` lines in `console.txt`: `client loaded; Java add-on found`,
   `viewing camera at ...`, or any `switched off` / `view error` lines.
 
